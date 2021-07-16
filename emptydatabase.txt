@@ -1,0 +1,52 @@
+
+
+#include <Adafruit_Fingerprint.h>
+#include <SD.h>
+
+File myFile;
+SoftwareSerial mySerial(12, 13);
+
+
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+void setup()
+{
+  Serial.begin(9600);
+if (!SD.begin(9)) {
+    Serial.println("initialization failed!");
+    while (1);
+  }
+  Serial.println("initialization done.");
+  
+  while (!Serial); 
+  delay(100);
+
+  Serial.println("\n\nDeleting all fingerprint templates!");
+  Serial.println("Press 'Y' key to continue");
+
+  while (1) {
+    if (Serial.available() && (Serial.read() == 'Y')) {
+      break;
+    }
+  }
+
+  
+  finger.begin(57600);
+
+  finger.emptyDatabase();
+
+  Serial.println("Now database is empty");
+  SD.remove("ID.txt");
+  SD.remove("NAMES.csv");
+  myFile = SD.open("ID.txt", FILE_WRITE);
+
+  
+  if (myFile) {
+    myFile.print(1);
+    myFile.close();
+  } else {
+    Serial.println("error opening id.txt");
+  }
+}
+void loop() {
+}

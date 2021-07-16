@@ -1,0 +1,328 @@
+#include <Adafruit_Fingerprint.h>
+#include <SPI.h>
+#include <SdFat.h>
+#include <LiquidCrystal.h>
+#include <ezButton.h>
+ezButton button1(24);
+ezButton button2(26);
+ezButton button3(22);
+SoftwareSerial mySerial(12, 13);
+#define DIRECTORY_ENTRY_LENGTH 30
+#define FILE_LINE_LENGTH 30
+
+File myFile;
+SdFat SD; 
+int count_value =0,count3=0,count4=0,i=0,count2=0,count5;
+
+String k,t,choosen,sname;
+const int rs = 8, en = 7, d4 = 6, d5 = 5, d6 = 4, d7 = 3;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+
+void setup()
+{
+  lcd.begin(16, 2);
+  SD.begin(9);
+  finger.begin(57600);
+  SD.begin(9);
+  readFile2("/","courses.csv");
+  String courses[count3];
+  readFile3("/","courses.csv",courses);
+  
+  
+  choosen=courses[0];
+  button1.setDebounceTime(50);
+  button2.setDebounceTime(50);
+  button3.setDebounceTime(50);
+  button1.setCountMode(COUNT_FALLING);
+  
+  lcd.print(choosen);
+  while(true){
+  button1.loop();
+  button2.loop();
+  button3.loop();
+  int btn1State = button2.getState();
+  int btn2State = button3.getState();
+  
+  unsigned long btn1Count = button2.getCount();
+  unsigned long btn2Count = button3.getCount();
+  
+   if(button1.isPressed()) {
+    lcd.clear();
+    count_value++;
+    if(count_value>(count3-1))
+    {
+      count_value=0;
+      }
+    lcd.print(courses[count_value]);
+   
+   }
+  if(button2.isPressed()) {
+    count_value--;
+
+    lcd.clear();
+    if(count_value<0)
+    {
+      count_value=(count3-1);
+      }
+    lcd.print(courses[count_value]);
+  
+  }
+  if(button3.isPressed())
+  {
+  lcd.print(" ");
+  lcd.print("selected ");
+  delay(1000);
+  lcd.clear();
+  choosen=courses[count_value];
+  choosen=choosen+".csv";
+  break;
+  }
+  }
+  
+
+  
+  lcd.print("waiting finger");
+  delay(5);
+  if (finger.verifyPassword()) {
+    
+  } else {
+   
+    while (1) { delay(1); }
+  }
+  
+  
+}
+  
+
+void loop()                     
+{
+  
+  getFingerprintID();
+  delay(50);            
+}
+
+uint8_t getFingerprintID() {
+  uint8_t p = finger.getImage();
+  switch (p) {
+    case FINGERPRINT_OK:
+    
+      break;
+    case FINGERPRINT_NOFINGER:
+      
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      lcd.print("iletişim hatası");
+      return p;
+    case FINGERPRINT_IMAGEFAIL:
+      
+      return p;
+    default:
+      
+      return p;
+  }
+
+
+  p = finger.image2Tz();
+  switch (p) {
+    case FINGERPRINT_OK:
+      
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      
+      return p;
+    case FINGERPRINT_FEATUREFAIL:
+      
+      return p;
+    case FINGERPRINT_INVALIDIMAGE:
+      
+      return p;
+    default:
+      
+      return p;
+  }
+
+ 
+  p = finger.fingerSearch();
+  if (p == FINGERPRINT_OK) {
+    
+  } 
+  else if (p == FINGERPRINT_NOTFOUND) {
+    lcd.clear();
+      lcd.print("fingerprint not");
+      lcd.setCursor(0, 1);
+      lcd.print("recognized");
+      delay(1500);
+      lcd.clear();
+      lcd.print("waiting finger");
+    return p;
+  } else {
+    
+    return p;
+  }
+  const char *choosen2=choosen.c_str();
+  count3=0;
+  readFile2("/",choosen2);
+  
+  String namelist[count3];
+  readFile3("/",choosen2,namelist);
+  readFile("/","NAMES.csv");
+  for(i=0;i<=count3;i++)
+  {
+    if(sname==namelist[i])
+    {
+      count5=1;}
+    }
+    if(count5==1)
+    {
+      lcd.clear();
+      lcd.print("you are already");
+      lcd.setCursor(0, 1);
+      lcd.print("on the list");
+      delay(2000);
+      lcd.clear();
+      lcd.print("waiting finger");
+      count5=0;
+      }
+    else{
+      myFile = SD.open(choosen, FILE_WRITE);
+      myFile.println(sname);
+      myFile.close();
+      lcd.clear();
+      lcd.print(sname);
+      delay(2000);
+      lcd.clear();
+      lcd.print("waiting finger");
+      
+      
+      }
+  return finger.fingerID;
+}
+
+
+int getFingerprintIDez() {
+  uint8_t p = finger.getImage();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  p = finger.image2Tz();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  p = finger.fingerFastSearch();
+  if (p != FINGERPRINT_OK)  return -1;
+
+  
+  
+  return finger.fingerID;
+}
+void readFile(char* Path, char* FileName){
+
+SdFile directory;
+SdFile file;
+  
+if(SD.chdir(Path)){
+if(file.open(FileName)){
+  
+char Line[FILE_LINE_LENGTH];
+memset(Line,0,sizeof(Line));
+char Char[2];
+memset(Char,0,sizeof(Char));
+  
+while (file.available()) {
+Char[0] = file.read();
+if(Char[0]=='\n'){
+count2=count2+1;
+if(count2==finger.fingerID){
+String list(Line);
+sname=list;
+
+count2=0;
+break;
+}
+memset(Line,0,sizeof(Line));
+}
+else if(Char[0]>=32)
+strcat(Line,Char);
+}
+file.close();
+}
+else
+
+  
+directory.close();
+}
+
+}
+void readFile2(char* Path, char* FileName){
+SdFile directory;
+SdFile file;
+  
+if(SD.chdir(Path)){
+if(file.open(FileName)){
+  
+char Line[FILE_LINE_LENGTH];
+memset(Line,0,sizeof(Line));
+char Char[2];
+memset(Char,0,sizeof(Char));
+while (file.available()) {
+Char[0] = file.read();
+if(Char[0]=='\n'){
+
+count3=count3+1;
+
+memset(Line,0,sizeof(Line));
+}
+else if(Char[0]>=32)
+strcat(Line,Char);
+}
+file.close();
+}
+else
+
+  
+directory.close();
+}
+
+}
+
+
+void readFile3(char* Path, char* FileName,String courses1[]){
+SdFile directory;
+SdFile file;
+  
+if(SD.chdir(Path)){
+if(file.open(FileName)){
+  
+char Line[FILE_LINE_LENGTH];
+memset(Line,0,sizeof(Line));
+char Char[2];
+memset(Char,0,sizeof(Char));
+i=0; 
+while (file.available()) {
+Char[0] = file.read();
+if(Char[0]=='\n'){
+
+String str(Line);
+courses1[i]=str;
+i=i+1;
+
+memset(Line,0,sizeof(Line));
+}
+else if(Char[0]>=32)
+strcat(Line,Char);
+}
+file.close();
+}
+else
+
+  
+directory.close();
+}
+}
+
+
+
